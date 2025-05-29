@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>HepAjans - Kayıt, Profil ve Admin Paneli</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0; padding: 0;
+      min-height: 100vh;
+      background: linear-gradient(120deg, #ffdee9 0%, #b5fffc 100%);
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
+    .center-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .auth-form, .profile-card, .admin-panel, .edit-profile-form {
+      background: #fffefefa;
+      padding: 30px 24px;
+      border-radius: 18px;
+      box-shadow: 0 8px 32px #0001;
+      margin-bottom: 24px;
+      width: 360px;
+      text-align: center;
+      transition: 0.25s;
+    }
+    .auth-form h2, .admin-panel h2, .edit-profile-form h2 { margin-bottom: 14px; }
+    .auth-form input, .auth-form select, .edit-profile-form input, .edit-profile-form textarea {
+      display: block;
+      margin: 10px auto 14px auto;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1.5px solid #e5e5e5;
+      width: 92%;
+      font-size: 1.05rem;
+    }
+    .auth-form button, .edit-profile-form button, .admin-btn, .logout-btn {
+      background: #07c9a7;
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-size: 1.1rem;
+      padding: 10px 0;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      transition: 0.18s;
+      margin-bottom: 8px;
+    }
+    .auth-form button:hover, .edit-profile-form button:hover, .admin-btn:hover, .logout-btn:hover { background: #059e7e; }
+    .auth-form p, .edit-profile-form p { font-size: 0.97rem; }
+    .auth-form a, .edit-profile-form a { color: #07c9a7; text-decoration: underline; cursor: pointer; }
+
+    .profile-card img {
+      width: 110px; height: 110px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid #90e9f8;
+      margin-bottom: 12px;
+      margin-top: -12px;
+      background: #f7f7f7;
+    }
+    .profile-card h2 { margin: 12px 0 7px 0; }
+    .profile-card .card-links {
+      margin-top: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+    .card {
+      min-width: 115px;
+      padding: 8px 0;
+      border-radius: 12px;
+      background: #161622;
+      color: #fff;
+      font-weight: 500;
+      font-size: 1rem;
+    }
+    .instagram { background: linear-gradient(45deg, #ffdc80, #e1306c, #c13584, #fd1d1d); }
+    .youtube { background: #202020; }
+    .phone { background: #5d62ff; }
+    .email { background: #00997c; }
+    .logout-btn, .admin-btn {
+      background: #f35f5f;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.05rem;
+      padding: 8px 24px;
+      margin-top: 18px;
+      margin-bottom: 0;
+      cursor: pointer;
+      box-shadow: 0 2px 8px #0001;
+      transition: background 0.2s;
+      width: auto;
+      display: inline-block;
+    }
+    .logout-btn:hover, .admin-btn:hover { background: #e41a1a; }
+
+    .edit-profile-form label {
+      display: block;
+      text-align: left;
+      margin-bottom: 3px;
+      margin-left: 10px;
+      font-weight: 500;
+      color: #666;
+    }
+
+    .admin-list {
+      margin-top: 20px;
+      text-align: left;
+    }
+    .admin-list .admin-user {
+      background: #f5faff;
+      border-radius: 12px;
+      margin-bottom: 13px;
+      padding: 12px 10px;
+      box-shadow: 0 1px 7px #0001;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      position: relative;
+    }
+    .admin-list .delete-user {
+      position: absolute;
+      top: 8px;
+      right: 12px;
+      background: #eb3333;
+      border: none;
+      color: #fff;
+      border-radius: 7px;
+      padding: 4px 10px;
+      cursor: pointer;
+      font-size: 0.98rem;
+      transition: background 0.19s;
+    }
+    .admin-list .delete-user:hover { background: #c80000; }
+    .admin-label { font-weight: bold; color: #333; }
+    .admin-user .card-links { margin: 8px 0 0 0; }
+    @media (max-width: 460px) {
+      .auth-form, .profile-card, .admin-panel, .edit-profile-form { width: 98vw; }
+    }
+  </style>
+</head>
+<body>
+  <div class="center-box" id="main-container"></div>
+
+  <script>
+    // ADMIN GİRİŞ BİLGİLERİ
+    const ADMIN_EMAIL = "admin@admin.com";
+    const ADMIN_PASS = "admin123";
+
+    document.addEventListener('DOMContentLoaded', function() {
+      showAuthForm('login');
+    });
+
+    function getUsers() {
+      return JSON.parse(localStorage.getItem('users') || "[]");
+    }
+    function setUsers(users) {
+      localStorage.setItem('users', JSON.stringify(users));
+    }
+
+    // Kayıt ve giriş ekranı (ekstra bilgiler + foto)
+    function showAuthForm(type) {
+      const main = document.getElementById('main-container');
+      let extra = '';
+      if (type === 'register') {
+        extra = `
+          <label>Profil Fotoğrafı</label>
+          <input type="file" id="photo" accept="image/*" required>
+          <input type="text" id="fullname" placeholder="Ad Soyad" required>
+          <input type="text" id="instagram" placeholder="Instagram (örn: @kullanici)" required>
+          <input type="text" id="youtube" placeholder="YouTube (örn: kanaladı)" required>
+          <input type="tel" id="phone" placeholder="Telefon" required>
+          <input type="date" id="birthdate" placeholder="Doğum Tarihi" required>
+          <textarea id="address" placeholder="Adres" rows="2" style="resize:vertical;" required></textarea>
+        `;
+      }
+      main.innerHTML = `
+        <form class="auth-form" onsubmit="handleAuth(event, '${type}')">
+          <h2>${type === 'register' ? 'Kayıt Ol' : 'Giriş Yap'}</h2>
+          <input type="email" id="email" placeholder="E-posta" required>
+          <input type="password" id="password" placeholder="Şifre" required>
+          ${extra}
+          <button type="submit">${type === 'register' ? 'Kayıt Ol' : 'Giriş Yap'}</button>
+          <p>
+            ${type === 'register'
+              ? 'Zaten hesabınız var mı? <a onclick="showAuthForm(\'login\')">Giriş Yap</a>'
+              : 'Hesabınız yok mu? <a onclick="showAuthForm(\'register\')">Kayıt Ol</a>'
+            }
+          </p>
+          <p><a onclick="showAuthForm('admin')">Admin Paneli</a></p>
+        </form>
+      `;
+    }
+
+    function showAuthFormAdmin() {
+      const main = document.getElementById('main-container');
+      main.innerHTML = `
+        <form class="auth-form" onsubmit="handleAdminLogin(event)">
+          <h2>Admin Girişi</h2>
+          <input type="email" id="admin_email" placeholder="Admin E-posta" required>
+          <input type="password" id="admin_pass" placeholder="Şifre" required>
+          <button type="submit">Giriş Yap</button>
+          <p><a onclick="showAuthForm('login')">Kullanıcı Girişi</a></p>
+        </form>
+      `;
+    }
+
+    function handleAuth(e, type) {
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      if (type === 'register') {
+        const fullname = document.getElementById('fullname').value.trim();
+        const instagram = document.getElementById('instagram').value.trim();
+        const youtube = document.getElementById('youtube').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        const birthdate = document.getElementById('birthdate').value;
+        const address = document.getElementById('address').value.trim();
+
+        // Profil fotoğrafı base64
+        const file = document.getElementById('photo').files[0];
+        if (!file) return alert("Lütfen profil fotoğrafı seçiniz!");
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          let users = getUsers();
+          if (users.find(u => u.email === email)) {
+            alert('Bu e-posta ile daha önce kayıt olunmuş!');
+            return;
+          }
+          const user = { email, password, fullname, instagram, youtube, phone, birthdate, address, photo: evt.target.result };
+          users.push(user);
+          setUsers(users);
+          localStorage.setItem('current_user', email);
+          showProfile(email);
+        };
+        reader.readAsDataURL(file);
+        return;
+      } else if (type === 'login') {
+        let users = getUsers();
+        let user = users.find(u => u.email === email && u.password === password);
+        if (user) {
+          localStorage.setItem('current_user', email);
+          showProfile(email);
+        } else {
+          alert('E-posta veya şifre hatalı!');
+        }
+      } else if (type === 'admin') {
+        showAuthFormAdmin();
+      }
+    }
+
+    function handleAdminLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('admin_email').value.trim();
+      const pass = document.getElementById('admin_pass').value;
+      if (email === ADMIN_EMAIL && pass === ADMIN_PASS) {
+        showAdminPanel();
+      } else {
+        alert("Admin girişi hatalı!");
+      }
+    }
+
+    function showProfile(email = null) {
+      const userMail = email || localStorage.getItem('current_user');
+      const users = getUsers();
+      const user = users.find(u => u.email === userMail);
+      if (!user) {
+        alert('Kullanıcı bulunamadı!');
+        showAuthForm('login');
+        return;
+      }
+      const main = document.getElementById('main-container');
+      main.innerHTML = `
+        <div class="profile-card">
+          <img src="${user.photo || 'https://randomuser.me/api/portraits/men/1.jpg'}" alt="Profil">
+          <h2>${user.fullname} <span style="color:#888;font-size:0.97rem">(@${user.email.split('@')[0]})</span></h2>
+          <div style="color:#888; margin-bottom:9px;">Doğum Tarihi: ${user.birthdate ? user.birthdate : '-'}</div>
+          <div style="color:#888; margin-bottom:12px;">Adres: ${user.address ? user.address : '-'}</div>
+          <div class="card-links">
+            <div class="card instagram">${user.instagram}</div>
+            <div class="card youtube">${user.youtube}</div>
+            <div class="card phone">${user.phone}</div>
+            <div class="card email">${user.email}</div>
+          </div>
+          <button class="admin-btn" onclick="showEditProfile()">Profili Düzenle</button>
+          <button class="admin-btn" onclick="showChangePassword()">Şifre Değiştir</button>
+          <button class="logout-btn" onclick="logout()">Çıkış Yap</button>
+        </div>
+      `;
+    }
+
+    function showEditProfile() {
+      const userMail = localStorage.getItem('current_user');
+      const users = getUsers();
+      const user = users.find(u => u.email === userMail);
+      if (!user) return alert("Kullanıcı bulunamadı!");
+
+      const main = document.getElementById('main-container');
+      main.innerHTML = `
+        <form class="edit-profile-form" onsubmit="handleProfileUpdate(event)">
+          <h2>Profili Güncelle</h2>
+          <img src="${user.photo || ''}" alt="Profil" style="width:85px; margin-bottom:8px;">
+          <label>Ad Soyad</label>
+          <input type="text" id="edit_fullname" value="${user.fullname}" required>
+          <label>Instagram</label>
+          <input type="text" id="edit_instagram" value="${user.instagram}" required>
+          <label>YouTube</label>
+          <input type="text" id="edit_youtube" value="${user.youtube}" required>
+          <label>Telefon</label>
+          <input type="tel" id="edit_phone" value="${user.phone}" required>
+          <label>Doğum Tarihi</label>
+          <input type="date" id="edit_birthdate" value="${user.birthdate || ''}" required>
+          <label>Adres</label>
+          <textarea id="edit_address" required>${user.address || ''}</textarea>
+          <label>Profil Fotoğrafı (Değiştirmek için seç)</label>
+          <input type="file" id="edit_photo" accept="image/*">
+          <button type="submit">Kaydet</button>
+          <button type="button" onclick="showProfile()">Vazgeç</button>
+        </form>
+      `;
+    }
+
+    function handleProfileUpdate(e) {
+      e.preventDefault();
+      const userMail = localStorage.getItem('current_user');
+      let users = getUsers();
+      let user = users.find(u => u.email === userMail);
+      if (!user) return alert("Kullanıcı bulunamadı!");
+
+      const fullname = document.getElementById('edit_fullname').value.trim();
+      const instagram = document.getElementById('edit_instagram').value.trim();
+      const youtube = document.getElementById('edit_youtube').value.trim();
+      const phone = document.getElementById('edit_phone').value.trim();
+      const birthdate = document.getElementById('edit_birthdate').value;
+      const address = document.getElementById('edit_address').value.trim();
+
+      // Profil fotoğrafı güncelleniyor mu?
+      const fileInput = document.getElementById('edit_photo');
+      if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          user.photo = evt.target.result;
+          finalizeUpdate();
+        };
+        reader.readAsDataURL(file);
+      } else {
+        finalizeUpdate();
+      }
+
+      function finalizeUpdate() {
+        user.fullname = fullname;
+        user.instagram = instagram;
+        user.youtube = youtube;
+        user.phone = phone;
+        user.birthdate = birthdate;
+        user.address = address;
+        setUsers(users);
+        showProfile();
+      }
+    }
+
+    function showChangePassword() {
+      const main = document.getElementById('main-container');
+      main.innerHTML = `
+        <form class="edit-profile-form" onsubmit="handleChangePassword(event)">
+          <h2>Şifre Değiştir</h2>
+          <input type="password" id="old_pass" placeholder="Mevcut Şifre" required>
+          <input type="password" id="new_pass" placeholder="Yeni Şifre" required>
+          <button type="submit">Şifreyi Değiştir</button>
+          <button type="button" onclick="showProfile()">Vazgeç</button>
+        </form>
+      `;
+    }
+
+    function handleChangePassword(e) {
+      e.preventDefault();
+      const old_pass = document.getElementById('old_pass').value;
+      const new_pass = document.getElementById('new_pass').value;
+      const userMail = localStorage.getItem('current_user');
+      let users = getUsers();
+      let user = users.find(u => u.email === userMail);
+      if (!user) return alert("Kullanıcı bulunamadı!");
+      if (user.password !== old_pass) {
+        alert("Mevcut şifre yanlış!");
+        return;
+      }
+      user.password = new_pass;
+      setUsers(users);
+      alert("Şifre başarıyla değiştirildi!");
+      showProfile();
+    }
+
+    function logout() {
+      localStorage.removeItem('current_user');
+      showAuthForm('login');
+    }
+
+    function showAdminPanel() {
+      const users = getUsers();
+      const main = document.getElementById('main-container');
+      main.innerHTML = `
+        <div class="admin-panel">
+          <h2>Kullanıcı Listesi (Admin)</h2>
+          <button class="logout-btn" style="background:#cdd;" onclick="showAuthForm('login')">Çıkış Yap</button>
+          <div class="admin-list">
+            ${users.length === 0 ? '<p>Kayıtlı kullanıcı yok.</p>' : users.map(u => `
+              <div class="admin-user">
+                <span class="admin-label">Ad Soyad:</span> ${u.fullname}<br>
+                <span class="admin-label">E-posta:</span> ${u.email}<br>
+                <span class="admin-label">Instagram:</span> ${u.instagram}<br>
+                <span class="admin-label">YouTube:</span> ${u.youtube}<br>
+                <span class="admin-label">Telefon:</span> ${u.phone}<br>
+                <span class="admin-label">Doğum Tarihi:</span> ${u.birthdate}<br>
+                <span class="admin-label">Adres:</span> ${u.address}<br>
+                <img src="${u.photo || ''}" alt="Profil" style="width:60px; border-radius:8px; margin:7px 0;">
+                <button class="delete-user" onclick="deleteUser('${u.email}')">Sil</button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function deleteUser(email) {
+      if (!confirm("Bu kullanıcıyı silmek istediğine emin misin?")) return;
+      let users = getUsers();
+      users = users.filter(u => u.email !== email);
+      setUsers(users);
+      showAdminPanel();
+    }
+
+    // Kısa yol: sayfa açıldığında, current_user varsa profil göstersin
+    if (localStorage.getItem('current_user')) showProfile();
+
+    // Global fonksiyonlar
+    window.showAuthForm = showAuthForm;
+    window.handleAuth = handleAuth;
+    window.showProfile = showProfile;
+    window.logout = logout;
+    window.showAdminPanel = showAdminPanel;
+    window.deleteUser = deleteUser;
+    window.handleAdminLogin = handleAdminLogin;
+    window.showEditProfile = showEditProfile;
+    window.handleProfileUpdate = handleProfileUpdate;
+    window.showChangePassword = showChangePassword;
+    window.handleChangePassword = handleChangePassword;
+  </script>
+</body>
+</html>
